@@ -1,0 +1,106 @@
+@import url(http://fonts.googleapis.com/css?family=Roboto:100,300);
+@import "compass/css3";
+
+/* ===============================================================================
+variables
+=============================================================================== */
+$plum: #6f3e92;
+
+/* ===============================================================================
+base layout
+=============================================================================== */
+body {
+  color: #222;
+  font: 300 1em 'Roboto', Arial, sans-serif;
+}
+
+h1 {
+  color: $plum;
+  font-size: 3em;
+  font-weight: 100;
+  margin-top: 10%;
+  text-align: center;
+  text-shadow: 2px 3px 6px rgba(0, 0, 0, 0.2);
+}
+
+p {
+  padding: 0 20px;
+  text-align: center;
+}
+
+a {
+  color: $plum;
+  display: inline-block;
+  text-decoration: none;
+  @include transition(all 200ms linear);
+  &:hover, &:focus {
+	background: $plum;
+	color: #fff;
+	padding: 1px 3px;
+  }
+}
+label {
+	display: block;
+	height: 0;
+	overflow: hidden;
+	position: absolute;
+	width: 0;
+	z-index: -1;
+}
+input {
+	box-sizing: border-box;
+	border: 1px solid #ccc;
+	border-radius: 3px;
+	font: 300 2em 'Roboto', Arial, sans-serif;
+	margin: 0;
+	max-width: 15em;
+	padding: 5px;
+	width: 100%;
+	-webkit-appearance: none;
+	&::-webkit-search-decoration, &::-webkit-search-cancel-button {
+		-webkit-appearance: none;
+	}
+	&:focus {
+		border: 1px solid $plum;
+		outline: 0;
+	}
+}
+
+/* ===============================================================================
+mindreader input styles
+=============================================================================== */
+.mindreader-status {
+	display: block;
+	overflow: hidden;
+	position: absolute;
+	text-indent: -9999em;
+}
+.mindreader-results {
+	background: #fff;
+	border-radius: 0 0 3px 3px;
+	box-shadow: 0 2px 2px 0 rgba(0,0,0,.3);
+	color: #000;
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	position: absolute;
+	text-align: left;
+	z-index: 9999;
+	&:empty {
+		display: none;
+	}
+	li {
+		margin: 0;
+	}
+	a {
+		color: #000;
+		display: block;
+		padding: 2px 5px;
+		text-decoration: none;
+		text-transform: capitalize;
+		@include transition(none);
+		&:hover, &:focus, &.active {
+			background: rgba($plum, .1);
+		}
+	}
+}
