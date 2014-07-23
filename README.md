@@ -1,6 +1,6 @@
 #mindreader.js
 
-A tiny, all-knowing, screen-reader-friendly alternative to jQuery UI Autocomplete.
+A tiny, all-knowing, screen-reader-friendly alternative to jQuery UI Autocomplete. See it in action at [s-plum.github.io/mindreader/](http://s-plum.github.io/mindreader/).
 
 Mindreader gives an ordinary text or search input the extraordinary ability to provide suggested values for the user's input based on ajax requests made to an external service (service not included). The suggested values will display below the text box, where the user can choose one (with either a mouse or keyboard), or ignore them all completely and type onward.
 
