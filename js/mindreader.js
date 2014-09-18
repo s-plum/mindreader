@@ -65,7 +65,7 @@
         bindDomEvents: function() {
             var self = this;
             $(window).on('resize', function() {
-                self.positionResults
+                self.positionResults();
             }.bind(self));
 
             //on keydown, if tabbing, clear results
