@@ -74,6 +74,14 @@ Returns html string of parsed matches. Function should accept a json object as a
 <dd><i>string, optional</i><br/>  
 Define whether the ajax call should be <code>GET</code> or <code>POST</code> by declaring the appropriate action string. Default is <code>POST</code>.</dd>
 
+<dt><code>matchStatus</code></dt>
+<dd><i>string</i><br/>
+Text that will populate in the screen-reader-friendly status box when matches are returned. Use <code>{0}</code> in your string as a placeholder for the result count. Default is <code>{0} items found. Use up and down arrow keys to navigate.</code>.</dd>
+
+<dt><code>noMatchStatus</code></dt>
+<dd><i>string</i><br/>
+Text that will populate both under the search input and in the screen-reader-friendly status box when no matches are returned. Default is no message (status box is empty and no results or text appear below search box).</dd>
+
 <dt><code>matchEvents</code></dt>
 <dd><i>string</i><br/>
 Events on which the <code>matchSelected</code> function should fire. Default is <code>mouseover click</code>.</dd>
@@ -94,6 +102,11 @@ Additional data that will be passed back with the search string during the ajax 
 <dt><code>searchPause</code></dt>
 <dd><i>integer</i><br/>
 Delay (in milliseconds) between last user keystroke and ajax request to external service. Default is <code>50</code>. 
+</dd>
+
+<dt><code>errorCallback</code></dt>
+<dd><i>function</i><br/>
+Executes if there is a server error during the ajax request. Default is <code>function() { return false; }</code> 
 </dd>
 </dl>
 

@@ -1,4 +1,4 @@
-﻿(function ($) {
+﻿(function () {
     var keyCode = {
         BACKSPACE: 8,
         DOWN: 40,
@@ -10,53 +10,81 @@
         TAB: 9,
         UP: 38
     };
-    $.fn.mindreader = function (params) {
-        if (params) return this.each(function (index, value) {
-            //map parameters to local variables
-            var ajaxUrl = params.ajaxUrl,
-                parseMatches = params.parseMatches || null,
-                matchSelected = params.matchSelected || null,
-                postData = params.postData || null,
-                actionType = params.actionType || 'POST',
-                matchEvents = params.matchEvents || 'mouseover click',
-                minLength = params.minLength || 1,
-                searchPause = params.searchPause || 50,
-                searchTimeout,
-                //element variables
-                $this = $(this),
-                $parent = $(this).parent(),
+
+    var classes = {
+        status: 'mindreader-status',
+        results: 'mindreader-results',
+        active: 'active',
+        nomatch: 'mindreader-nomatch',
+        resultsOpen: 'mindreader-results-open'
+    }
+
+    var dataAttributes = {
+        currentVal: 'data-current-val'
+    };
+
+    var defaults = {
+        ajaxUrl: '',
+        parseMatches: null,
+        matchSelected: null,
+        matchStatus: '{0} items found. Use up and down arrow keys to navigate.',
+        noMatchStatus: null,
+        postData: null,
+        actionType: 'POST',
+        matchEvents: 'mouseover click',
+        minLength: 1,
+        searchPause: 50,
+        errorCallback: function() { return false; }
+    };
+
+    var Mindreader = {
+        create: function () {
+            var instance = Object.create(this);
+            instance._construct.apply(instance, arguments);
+            return instance;
+        },
+        _construct: function(elem, params) {
+            this.el = elem;
+            this.parent = elem.parent();
+            this.params = $.extend({}, defaults, params);
+
             //add status box for accessibility - hidden container with text that will update with status of results for screen readers
-                $statusBox = $('<span />', {
-                    'role': 'status',
-                    'class': 'mindreader-status',
-                    'aria-live': 'polite'
-                }),
-                $results= $('<ul />', {
-                    'class': 'mindreader-results',
-                    'id': $this.attr('id') + '-mindreader'
-                });
-            $('body').append($statusBox).append($results);
-            $(window).on('resize', positionResults);
+            this.statusBox = $('<span />', {
+                'role': 'status',
+                'class': classes.status,
+                'aria-live': 'polite'
+            });
+            this.results = $('<ul />', {
+                'class': classes.results,
+                'id': this.el.attr('id') + '-mindreader'
+            });
+            $('body').append(this.statusBox).append(this.results);
+            this.bindDomEvents();
+            this.searchTimeout;
+        },
+        bindDomEvents: function() {
+            var self = this;
+            $(window).on('resize', self.positionResults);
+
             //on keydown, if tabbing, clear results
-            $(document).on('keydown', '#' + $this.attr('id'), function (e) {
+            $(document).on('keydown', '#' + self.el.attr('id'), function (e) {
                 var code = e.keyCode ? e.keyCode : e.which;
                 switch (code) {
                     case keyCode.ESCAPE:
-                        $this.val($this.attr('data-current-val'));
+                        self.el.val(self.el.attr(dataAttributes.currentVal));
                         e.preventDefault();
-                        clearResults();
+                        self.clearResults();
                         break;
                     case keyCode.TAB:
-                        console.log('test');
-                        clearResults();
+                        self.clearResults();
                         break;
                     case keyCode.ENTER:
-                        if ($results.find('.active').length > 0) {
-                            $($results.find('.active')[0]).trigger('click');
+                        if (self.results.find('.' + classes.active).length > 0) {
+                            $(self.results.find('.' + classes.active)[0]).trigger('click');
                             e.preventDefault();
                         }
                         else {
-                            clearResults();
+                            self.clearResults();
                         }
                         break;
                     case keyCode.UP:
@@ -64,154 +92,177 @@
                         break;
                 }
             })
-            .on('keyup', '#' + $this.attr('id'), function (e) {
-                clearTimeout(searchTimeout);
+            .on('keyup', '#' + self.el.attr('id'), function (e) {
+                clearTimeout(self.searchTimeout);
                 var code = e.keyCode ? e.keyCode : e.which;
                 switch (code) {
                     case keyCode.DOWN:
                         e.preventDefault();
-                        if (!$results.is(':empty')) moveListSelection('next');
+                        if (!self.results.is(':empty')) self.moveListSelection('next');
                         break;
                     case keyCode.UP:
                         e.preventDefault();
-                        if (!$results.is(':empty')) moveListSelection('prev');
+                        if (!self.results.is(':empty')) self.moveListSelection('prev');
                         break;
                     case keyCode.ENTER:
-                        if ($results.find('.active').length > 0) {
+                        if (self.results.find('.' + classes.active).length > 0) {
                             e.preventDefault();
-                            clearResults();
+                            self.clearResults();
                         }
                         else
                             break;
                     case keyCode.ESCAPE:
                         e.preventDefault();
-                        clearResults();
+                        self.clearResults();
                         break;
                     default:
-                        //clear any previous results
-                        var value = $(this).val();
-                        $this.attr('data-current-val', value);
-                        if (value.length >= minLength) {
-                            searchTimeout = setTimeout(function () {
-                                //gather any additional data for posting
-                                if (postData != null && typeof postData == 'function' && typeof postData() == 'object') var dataObject = JSON.stringify(postData());
-                                else var dataObject = null;
-                                $.ajax({
-                                    type: actionType,
-                                    url: ajaxUrl + value, 
-                                    data: dataObject,
-                                    contentType: 'application/json',
-                                    success: function (data) {
-                                        if (typeof data == 'string') {
-                                            data = $.parseJSON(data);
-                                        }
-                                        if ($.isArray(data) && data.length > 0 && parseMatches != null) {
-                                            clearResults();
-                                            $results.append($(parseMatches(data)));
-                                            //update status to result count
-                                            var resultCount = $results.find('li').length;
-                                            var plural = resultCount > 1 ? 'es' : '';
-                                            if (resultCount > 0) $statusBox.text(resultCount + ' suggested search' + plural + ' found. Use up and down arrow keys to navigate suggestions.');
-                                            positionResults();
-                                            showResults();
-                                            $this.addClass('mindreader-results-open');
-                                            //bind onclick for result list links
-                                            $results.find('a').on('click', function () {
-                                                $this.val($(this).text());
-                                                clearResults();
-                                                $this.focus();
-                                                return false;
-                                            }).on('mouseover', function () {
-                                                $results.find('a').removeClass('active');
-                                                $(this).addClass('active');
-                                            });
-                                            if (matchSelected != null) $results.find('a').on(matchEvents, matchSelected);
-                                        }
-                                    }
-                                });
-                            }, searchPause);
-                        }
-                        else {
-                            clearResults();
-                        }
+                        self.search();
                         break;
                 }
             })
-            .on('blur', '#' + $this.attr('id'), function () {
+            .on('blur', '#' + self.el.attr('id'), function () {
                 setTimeout(function () {
-                    if ($results.find('a:hover, a:focus, a:active').length == 0) {
-                        clearResults();
-                        $this.attr('data-current-val', '');
+                    if (self.results.find('a:hover, a:focus, a:active').length == 0) {
+                        self.clearResults();
+                        self.el.attr(dataAttributes.currentVal, '');
                     }
                 }, 100);
             });
-
-            function clearResults() {
-                $this.removeClass('mindreader-results-open');
-                $statusBox.text('');
-                $results.empty();
-                hideResults();
-            };
-
-            function positionResults() {
-                var height = $this.outerHeight(),
-                    width = $this.outerWidth(),
-                    xpos = $this.offset().left,
-                    ypos = $this.offset().top;
-                $results.css({
-                    'width': width + 'px',
-                    'left': xpos + 'px',
-                    'top': (ypos + height) + 'px'
-                })
+        },
+        search: function() {
+            var self = this;
+            //clear any previous results
+            var value = self.el.val();
+            self.el.attr(dataAttributes.currentVal, value);
+            if (value.length >= self.params.minLength) {
+                self.searchTimeout = setTimeout(function () {
+                    //gather any additional data for posting
+                    if (self.params.postData != null && typeof self.params.postData == 'function' && typeof self.params.postData() == 'object') var dataObject = JSON.stringify(self.params.postData());
+                    else var dataObject = null;
+                    $.ajax({
+                        type: self.params.actionType,
+                        url: self.params.ajaxUrl + value, 
+                        data: dataObject,
+                        contentType: 'application/json',
+                        success: function (data) {
+                            if (typeof data == 'string') {
+                                data = $.parseJSON(data);
+                            }
+                            if ($.isArray(data) && self.params.parseMatches != null) {
+                                self.parseResults(data);
+                            }
+                        },
+                        error: self.params.errorCallback
+                    });
+                }, self.searchPause);
             }
-
-            function showResults() {
-                positionResults();
-                $results.removeAttr('aria-hidden').show();
+            else {
+                self.clearResults();
             }
-
-            function hideResults() {
-                $results.attr('aria-hidden','true').hide();
-            }
-
-            function moveListSelection(direction) {
-                switch (direction) {
-                    case 'next':
-                        var openStart = 0;
-                        var endListSelector = ':last-child';
-                        break;
-                    case 'prev':
-                        var openStart = $results.children('li').length - 1;
-                        var endListSelector = ':first-child';
-                        break;
+        },
+        parseResults: function(data) {
+            var self = this;
+            self.clearResults();
+            if (data.length == 0) {
+                if (self.params.noMatchStatus != null) {
+                    self.results.append($('<li class="' + classes.nomatch + '">' + self.params.noMatchStatus + '</li>'));
+                    self.statusBox.text(self.params.noMatchStatus);
                 }
-                //if nothing is active
-                if ($results.find('.active').length === 0) {
-                    $($results.find('a')[openStart]).addClass('active');
-                    $this.val($($results.find('.active')[0]).text());
-                    $statusBox.text($($results.find('.active')[0]).text());
-                    $($results.find('.active')[0]).trigger('mouseover');
-                }
-
-                    //if item at beginning/end of list is selected
-                else if ($($results.find('.active')[0]).parent('li').is(endListSelector) || (direction === 'prev' && $($results.find('.active')[0]).parent('li').is(':first-child'))) {
-                    $results.find('a').removeClass('active');
-                    $this.val($this.attr('data-current-val'));
-                    $statusBox.text($this.attr('data-current-val'));
-                }
-
-                    //if list is open, make next list item active
-                else {
-                    var currentItem = $($results.find('.active')[0]);
-                    var nextItem = currentItem.parent('li')[direction]('li').children('a');
-                    nextItem.addClass('active');
-                    currentItem.removeClass('active');
-                    $this.val($($results.find('.active')[0]).text());
-                    $statusBox.text($($results.find('.active')[0]).text());
-                    $($results.find('.active')[0]).trigger('mouseover');
-                }
+                self.positionResults();
+                self.showResults();
+                self.el.addClass(classes.resultsOpen);
                 return false;
-            };
+            }
+
+            self.results.append($(self.params.parseMatches(data)));
+
+            //update status to result count
+            var resultCount = self.results.find('li').length;
+            if (resultCount > 0) self.statusBox.text(self.params.matchStatus.replace("{0}", resultCount));
+            self.positionResults();
+            self.showResults();
+            self.el.addClass(classes.resultsOpen);
+
+            //bind onclick for result list links
+            self.results.find('a').on('click', function (e) {
+                self.el.val($(e.target).text());
+                self.clearResults();
+                self.el.focus();
+                return false;
+            }).on('mouseover', function (e) {
+                self.results.find('a').removeClass(classes.active);
+                $(e.target).addClass(classes.active);
+            });
+            if (self.params.matchSelected != null) self.results.find('a').on(self.params.matchEvents, self.params.matchSelected);
+        },
+        clearResults: function() {
+            this.el.removeClass(classes.resultsOpen);
+            this.statusBox.text('');
+            this.results.empty();
+            this.hideResults();
+        },
+        positionResults: function() {
+            var height = this.el.outerHeight(),
+                width = this.el.outerWidth(),
+                xpos = this.el.offset().left,
+                ypos = this.el.offset().top;
+            this.results.css({
+                'width': width + 'px',
+                'left': xpos + 'px',
+                'top': (ypos + height) + 'px'
+            });
+        },
+        showResults: function() {
+            this.positionResults();
+            this.results.removeAttr('aria-hidden').show();
+        },
+        hideResults: function() {
+            this.results.attr('aria-hidden','true').hide();
+        },
+        moveListSelection: function(direction) {
+            var self = this;
+            switch (direction) {
+                case 'next':
+                    var openStart = 0;
+                    var endListSelector = ':last-child';
+                    break;
+                case 'prev':
+                    var openStart = self.results.children('li').length - 1;
+                    var endListSelector = ':first-child';
+                    break;
+            }
+            //if nothing is active
+            if (self.results.find('.' + classes.active).length === 0) {
+                $(self.results.find('a')[openStart]).addClass(classes.active);
+                self.el.val($(self.results.find('.' + classes.active)[0]).text());
+                self.statusBox.text($(self.results.find('.' + classes.active)[0]).text());
+                $(self.results.find('.' + classes.active)[0]).trigger('mouseover');
+            }
+
+            //if item at beginning/end of list is selected
+            else if ($(self.results.find('.' + classes.active)[0]).parent('li').is(endListSelector) || (direction === 'prev' && $(self.results.find('.' + classes.active)[0]).parent('li').is(':first-child'))) {
+                self.results.find('a').removeClass(classes.active);
+                self.el.val(self.el.attr(dataAttributes.currentVal));
+                self.statusBox.text(self.el.attr(dataAttributes.currentVal));
+            }
+
+            //if list is open, make next list item active
+            else {
+                var currentItem = $(self.results.find('.' + classes.active)[0]);
+                var nextItem = currentItem.parent('li')[direction]('li').children('a');
+                nextItem.addClass(classes.active);
+                currentItem.removeClass(classes.active);
+                self.el.val($(self.results.find('.' + classes.active)[0]).text());
+                self.statusBox.text($(self.results.find('.' + classes.active)[0]).text());
+                $(self.results.find('.' + classes.active)[0]).trigger('mouseover');
+            }
+            return false;
+        }
+    };
+
+    $.fn.mindreader = function (params) {
+        if (params) return this.each(function (i, v) {
+            Mindreader.create($(v), params);
         });
     };
-})(jQuery);
+})();
