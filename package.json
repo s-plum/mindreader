@@ -1,6 +1,6 @@
 {
   "name": "mindreader",
-  "version": "0.0.0",
+  "version": "2.0.1",
   "description": "A tiny, all-knowing, screen-reader-friendly alternative to jQuery UI Autocomplete.",
   "author": "Stephanie Plumeri",
   "dependencies": {
