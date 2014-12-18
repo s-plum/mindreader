@@ -156,7 +156,7 @@
                         },
                         error: self.params.errorCallback
                     });
-                }, self.searchPause);
+                }, self.params.searchPause);
             }
             else {
                 self.clearResults();
